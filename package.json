@@ -1,0 +1,23 @@
+{
+  "author": "Paul Querna <pquerna@apache.org> (http://paul.querna.org/)",
+  "name": "cassandra-syncer",
+  "description": "Tool for syncing of Cassandra SSTables to backup storage.",
+  "version": "0.1.0",
+  "homepage": "https://github.com/racker/cassandra-syncer",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/racker/node-cassandra-client.git"
+  },
+  "main": "lib/cassandra-syncer.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "dependencies": {
+    "stalker": ">= 0.0.12",
+    "cloudfiles": ">= 0.2.7"
+  },
+  "devDependencies": {}
+}
