@@ -24,9 +24,9 @@
 
   sync(options, function(err) {
     if (err) {
-      console.error(err);
+      process.stderr.write(err);
       if (err.stack) {
-        console.error(err.stack);
+        process.stderr.write(err.stack);
       }
     }
     process.exit(1);
