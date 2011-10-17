@@ -16,9 +16,9 @@
     "node": "*"
   },
   "dependencies": {
-    "async": ">= 0.1.9",
-    "cloudfiles": ">= 0.2.7",
-    "stalker": ">= 0.0.12"
+    "async": ">= 0.1.x",
+    "cloudfiles": ">= 0.3.x",
+    "stalker": ">= 0.0.x"
   },
   "devDependencies": {}
 }
