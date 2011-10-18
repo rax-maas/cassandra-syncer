@@ -16,11 +16,15 @@
  *
  */
 
-(function main() {
+var argv = require('optimist')
+    .usage('$0 [source] [destination]').argv;
+
+
+function main() {
   var sync = require('../lib/cassandra-syncer').sync;
   /* TOOD: arg parsing */
 //  var options = {'source': './test', 'target': 'cloudfiles://username:password'}
-  var options = {'source': './test', 'target': 'directory://./dest'}
+  var options = {'source': './test', 'target': 'directory://./dest'};
 
   sync(options, function(err) {
     if (err) {
@@ -30,5 +34,7 @@
       }
     }
     process.exit(1);
-  })
-})();
+  });
+}
+
+main();
