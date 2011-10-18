@@ -16,15 +16,28 @@
  *
  */
 
+var sys = require('sys');
 var argv = require('optimist')
-    .usage('$0 [source] [destination]').argv;
-
+    .usage('$0 --source=[source] --target=[destination]').argv;
 
 function main() {
   var sync = require('../lib/cassandra-syncer').sync;
   /* TOOD: arg parsing */
 //  var options = {'source': './test', 'target': 'cloudfiles://username:password'}
-  var options = {'source': './test', 'target': 'directory://./dest'};
+  var options = {};
+
+  if (!argv.source) {
+    process.stderr.write('Source not provided');
+    process.exit(-1);
+  }
+
+  if (!argv.target) {
+    process.stderr.write('Target not provided');
+    process.exit(-1);
+  }
+
+  options.source = argv.source;
+  options.target = argv.target;
 
   sync(options, function(err) {
     if (err) {
