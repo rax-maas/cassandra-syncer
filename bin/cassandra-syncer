@@ -19,6 +19,8 @@
 var sys = require('sys');
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
+    .demand('target')
+    .demand('source')
     .default('re', '.*-Data.db');
 var argv = arg.argv;
 
