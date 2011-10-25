@@ -18,7 +18,9 @@
 
 var sys = require('sys');
 var argv = require('optimist')
-    .usage('$0 --source=[source] --target=[destination]').argv;
+    .usage('$0 --source=[source] --target=[destination] [--re=REGEX]').argv;
+
+var DEFAULT_REGEX = new RegExp('.*-Data.db');
 
 function main() {
   var sync = require('../lib/cassandra-syncer').sync;
@@ -38,6 +40,7 @@ function main() {
 
   options.source = argv.source;
   options.target = argv.target;
+  options.re = argv.re ? new RegExp(argv.re) : DEFAULT_REGEX;
 
   sync(options, function(err) {
     if (err) {
