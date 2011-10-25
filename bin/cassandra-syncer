@@ -34,16 +34,6 @@ function main() {
     process.exit(0);
   }
 
-  if (!argv.source) {
-    process.stderr.write('Source not provided');
-    process.exit(-1);
-  }
-
-  if (!argv.target) {
-    process.stderr.write('Target not provided');
-    process.exit(-1);
-  }
-
   options.re = argv.re;
   options.source = argv.source;
   options.target = argv.target;
