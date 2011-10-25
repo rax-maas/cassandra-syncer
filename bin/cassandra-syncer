@@ -20,6 +20,7 @@ var sys = require('sys');
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
     .demand('target')
+    .describe('target', 'cloudfiles://, directory://')
     .demand('source')
     .default('re', '.*-Data.db');
 var argv = arg.argv;
@@ -31,7 +32,7 @@ function main() {
   var options = {};
 
   if (argv.help) {
-    process.stdout.write(arg.help());
+    arg.showHelp();
     process.exit(0);
   }
 
