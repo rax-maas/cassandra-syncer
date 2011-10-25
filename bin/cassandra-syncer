@@ -20,9 +20,15 @@ var sys = require('sys');
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
     .demand('target')
+    .alias('t', 'target')
     .describe('target', 'cloudfiles://, directory://')
     .demand('source')
-    .default('re', '.*-Data.db');
+    .alias('s', 'source')
+    .options('r', {
+      alias: 'regex',
+      default: '.*-Data.db'
+    })
+    .alias('h', 'help');
 var argv = arg.argv;
 
 function main() {
