@@ -28,6 +28,9 @@ var arg = require('optimist')
       alias: 'regex',
       default: new RegExp('.*-Data.db')
     })
+    .options('b', {
+      alias: 'backup-dir'
+    })
     .alias('h', 'help');
 var argv = arg.argv;
 
@@ -40,6 +43,7 @@ function main() {
     process.exit(0);
   }
 
+  options.backupDirectory = argv.b;
   options.re = argv.r;
   options.source = argv.source;
   options.target = argv.target;
