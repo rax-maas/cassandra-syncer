@@ -34,5 +34,9 @@ Example pruning backups older than 21 days:
 
 # Status
 
-Started on the basic target and source structure, but doesn't do very much yet.
+* First pass of syncer is working
 
+# TODO
+
+* Restore utility
+* fsck utility
