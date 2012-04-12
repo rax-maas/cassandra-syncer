@@ -6,11 +6,11 @@ A tool for syncing Csasandra SSTables out to various destinations.
 
 Example saving to Cloudfiles:
 
-    bin/cassandra-syncer --dest cloudfiles://user:password@cloudfiles/bucket-name --source /var/lib/cassandra/data
+    bin/cassandra-syncer --config config.json --target cloudfiles://bucket-name --source /var/lib/cassandra/data
 
 Example saving to another local path, which could be a network volume like EBS:
 
-    bin/cassandra-syncer --dest directory:///mnt/network-volume --source /var/lib/cassandra/data
+    bin/cassandra-syncer --target directory:///mnt/network-volume --source /var/lib/cassandra/data
 
 Example restoring from the backup:
 

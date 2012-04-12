@@ -1,4 +1,5 @@
 {
   "RACKSPACE_USERNAME": "",
-  "RACKSPACE_TOKEN": ""
+  "RACKSPACE_TOKEN": "",
+  "SERVICENET_HOST": ""
 }
