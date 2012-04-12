@@ -17,6 +17,7 @@
  */
 
 var sys = require('sys');
+var fs = require('fs')
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
     .demand('target')
@@ -28,6 +29,8 @@ var arg = require('optimist')
       alias: 'regex',
       default: new RegExp('.*-Data.db')
     })
+    .demand('config')
+    .alias('c', 'config')
     .options('b', {
       alias: 'backup-dir'
     })
@@ -36,11 +39,19 @@ var argv = arg.argv;
 
 function main() {
   var sync = require('../lib/cassandra-syncer').sync;
-  var options = {};
+  var options = {}, config;
 
   if (argv.help) {
     arg.showHelp();
     process.exit(0);
+  }
+
+  try {
+    config = fs.readFileSync(argv.c);
+    options.config = JSON.parse(config);
+  } catch(err) {
+    process.stdout.write('Invalid Config File: ' + err.message + '\n');
+    process.exit(1);
   }
 
   options.backupDirectory = argv.b;
