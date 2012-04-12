@@ -25,7 +25,7 @@ actually needed.
 
 Example pruning backups older than 21 days:
 
-    bin/cassandra-syncer-prune --older-than 21
+    bin/cassandra-syncer-fsck--older-than 21
 
 # Installation
 

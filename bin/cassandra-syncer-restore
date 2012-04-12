@@ -38,7 +38,7 @@ var arg = require('optimist')
 var argv = arg.argv;
 
 function main() {
-  var sync = require('../lib/cassandra-syncer').sync;
+  var restore = require('../lib/cassandra-syncer').restore;
   var options = {}, config;
 
   if (argv.help) {
@@ -59,7 +59,7 @@ function main() {
   options.source = argv.source;
   options.target = argv.target;
 
-  sync(options, function(err) {
+  restore(options, function(err) {
     if (err) {
       process.stderr.write(err);
       if (err.stack) {
