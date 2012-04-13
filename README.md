@@ -14,7 +14,7 @@ Example saving to another local path, which could be a network volume like EBS:
 
 Example restoring from the backup:
 
-    bin/cassandra-syncer-restore --source directory:///mnt/network-volume --dest /var/lib/cassandra/data
+    bin/cassandra-syncer-restore --source directory:///mnt/network-volume --target /var/lib/cassandra/data
 
 This is not just a copying of all available SSTables into the Cassandra data directory -- we 
 keep track of what the current set of SSTables are when we created the backup, meaning we only 
@@ -25,18 +25,13 @@ actually needed.
 
 Example pruning backups older than 21 days:
 
-    bin/cassandra-syncer-fsck--older-than 21
+    bin/cassandra-syncer-fsck --older-than 21
 
 # Installation
 
     # TODO: this isn't available on NPM yet (!)
     npm install -g cassandra-syncer
 
-# Status
-
-* First pass of syncer is working
-
 # TODO
 
-* Restore utility
 * fsck utility
