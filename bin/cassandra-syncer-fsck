@@ -16,10 +16,9 @@
  *
  */
 
-(function main() {
-  var fsck = require('../lib/cassandra-syncer').fsck;
-  /* TOOD: arg parsing */
-  var options = {'target': 'directory://./dest'}
+function main() {
+  var fsck = require('../lib/cassandra-syncer').fsck,
+      options = {'target': 'directory://./dest'};
 
   fsck(options, function(err) {
     if (err) {
@@ -29,5 +28,7 @@
       }
     }
     process.exit(1);
-  })
-})();
+  });
+}
+
+main();

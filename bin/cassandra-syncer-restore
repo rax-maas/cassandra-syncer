@@ -17,7 +17,7 @@
  */
 
 var sys = require('sys');
-var fs = require('fs')
+var fs = require('fs');
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
     .demand('target')
@@ -42,8 +42,7 @@ var arg = require('optimist')
 var argv = arg.argv;
 
 function main() {
-  var restore = require('../lib/cassandra-syncer').restore;
-  var options = {}, config;
+  var restore = require('../lib/cassandra-syncer').restore, options = {}, config;
 
   if (argv.help) {
     arg.showHelp();

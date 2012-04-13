@@ -17,7 +17,7 @@
  */
 
 var sys = require('sys');
-var fs = require('fs')
+var fs = require('fs');
 var logmagic = require('logmagic');
 var arg = require('optimist')
     .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
@@ -41,8 +41,9 @@ var argv = arg.argv;
 logmagic.route('__root__', logmagic.DEBUG, 'graylog2-stderr');
 
 function main() {
-  var sync = require('../lib/cassandra-syncer').sync;
-  var options = {}, config;
+  var sync = require('../lib/cassandra-syncer').sync,
+      options = {},
+      config;
 
   if (argv.help) {
     arg.showHelp();
