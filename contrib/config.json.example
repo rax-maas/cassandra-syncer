@@ -2,5 +2,6 @@
   "RACKSPACE_USERNAME": "",
   "RACKSPACE_TOKEN": "",
   "HOST": "",
-  "USE_SERVICENET": false
+  "USE_SERVICENET": false,
+  "CACHE_PATH": "/var/cache/cassandra-syncer"
 }
