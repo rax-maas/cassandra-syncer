@@ -38,7 +38,7 @@ var arg = require('optimist')
     .alias('h', 'help');
 var argv = arg.argv;
 
-logmagic.route('__root__', logmagic.DEBUG, 'graylog2-stderr');
+//logmagic.route('__root__', logmagic.DEBUG, 'graylog2-stderr');
 
 function main() {
   var sync = require('../lib/cassandra-syncer').sync,
