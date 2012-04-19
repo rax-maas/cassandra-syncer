@@ -88,34 +88,18 @@ StorageObject.prototype = {
   
   save: function (options, callback) {
     var self = this;
-    var fileStream = fs.createWriteStream(options.local, {
+    var writeFileStream = fs.createWriteStream(options.local, {
       flags: options.flags || 'w+', 
       encoding: options.encoding || null,
       mode: options.mode || 0666
     });
-    
-    fs.readFile(this.local, function (err, data) {
-      if (err) {
-        return callback(err);
-      }
-      
-      function endWrite() {
-        fileStream.end();
-        callback(null, options.local);
-      }
-      
-      var written = false;
-      fileStream.on('drain', function () {
-        if (!written) {
-          endWrite();
-        }
-      });
-      
-      written = fileStream.write(data);
-      if (written) {
-        endWrite();
-      }
+    writeFileStream.on('error', callback);
+    writeFileStream.on('close', function() {
+      callback(null, options.local);
     });
+    var readFileStream = fs.createReadStream(this.local, { 'bufferSize': 8 * 1024 });
+    readFileStream.on('error', callback);
+    readFileStream.pipe(writeFileStream);
   },
   
   update: function (data, callback) {
