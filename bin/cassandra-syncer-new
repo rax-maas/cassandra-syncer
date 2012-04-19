@@ -60,10 +60,18 @@ Uploader.prototype.add = function(filename, writeManifest) {
     writeManifest: writeManifest
   };
   log.info(sprintf('Uploading %s', filename));
-  this._queue.push(obj, this._onDone.bind(this, obj));
+  this._queue.push(obj, this._onDone(obj));
 }
 
-Uploader.prototype._onDone = function(err, filename) {
+Uploader.prototype._onDone = function(obj) {
+  return function(err) {
+    if (err) {
+      log.error(sprintf('Error uploading %s.', obj.filename));
+      this.add(obj.filename, obj.writeManifest);
+    } else {
+      log.info(sprintf('Successfully uploaded %s.', obj.filename));
+    }
+  };
 };
 
 Uploader.prototype._writeManifest = function(filename, callback) {
@@ -151,19 +159,29 @@ function Watcher(paths, options) {
   this._uploader = new Uploader(options);
 }
 
-Watcher.prototype._onFile = function(ev) {
-  var resolvedPath = path.resolve(path.join(this._paths[0], ev.name));
-  this._uploader.add(resolvedPath, true);
+Watcher.prototype._onFile = function(p) {
+  var self = this;
+  return function(ev) {
+    var absolutePath = path.resolve(path.join(p, ev.name));
+    self._uploader.add(absolutePath, true);
+  };
 };
 
 Watcher.prototype.watch = function() {
-  var obj = {
-    path: path.resolve(this._paths[0]),
-    watch_for: Inotify.IN_MOVED_TO,
-    callback: this._onFile.bind(this)
-  };
-  log.info(sprintf('Adding watch %s', obj.path));
-  this._inotify.addWatch(obj);
+  var self = this;
+  this._paths.forEach(function(p) {
+    var resolvedPath = path.resolve(p);
+    log.info(sprintf('Adding watch %s', resolvedPath));
+    self._inotify.addWatch({
+      path: resolvedPath,
+      watch_for: Inotify.IN_MOVED_TO,
+      callback: self._onFile(resolvedPath)
+    });
+  });
+};
+
+Watcher.prototype.isTempFile = function(filename) {
+  return filename.indexOf('-tmp') !== -1;
 };
 
 Watcher.prototype.backup = function() {
@@ -174,7 +192,7 @@ Watcher.prototype.backup = function() {
     });
 
     walker.on('file', function(root, fileStats, next) {
-      if (fileStats.name.indexOf('-tmp') == -1) {
+      if (!self.isTempFile(fileStats.name)) {
         self._uploader.add(path.resolve(path.join(root, fileStats.name)), false);
       }
       next();
@@ -217,6 +235,7 @@ function main() {
   var watcher = new Watcher([].concat(argv.path), opts);
   watcher.isAFullBackupNeeded(function(err, full) {
     if (err) {
+      log.error('Error', {err: err});
       return;
     }
     if (full) {

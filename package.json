@@ -23,7 +23,9 @@
     "mkdirp": "0.3.x",
     "nodelint": "0.6.x",
     "sprintf": "0.1.x",
-    "stalker": ">= 0.0.x"
+    "stalker": ">= 0.0.x",
+    "inotify": "0.2.x",
+    "walk": "2.1.x"
   },
   "devDependencies": {}
 }
