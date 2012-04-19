@@ -210,7 +210,7 @@ Watcher.prototype.isAFullBackupNeeded = function(callback) {
 };
 
 function main() {
-  var config, opts = {};
+  var config, opts = {}, watcher;
 
   try {
     config = JSON.parse(fs.readFileSync(argv.config));
@@ -232,7 +232,8 @@ function main() {
     opts.cache = {};
     opts.cache.cachePath = config.CACHE_PATH;
   }
-  var watcher = new Watcher([].concat(argv.path), opts);
+
+  watcher = new Watcher([].concat(argv.path), opts);
   watcher.isAFullBackupNeeded(function(err, full) {
     if (err) {
       log.error('Error', {err: err});
