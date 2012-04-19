@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+/*
+ *  Copyright 2011 Rackspace
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+var sys = require('sys');
+var fs = require('fs');
+var logmagic = require('logmagic');
+var arg = require('optimist')
+    .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
+    .demand('target')
+    .alias('t', 'target')
+    .describe('target', 'cloudfiles://, directory://')
+    .demand('source')
+    .alias('s', 'source')
+    .options('r', {
+      alias: 'regex',
+      default: new RegExp('.*-Data.db')
+    })
+    .demand('config')
+    .alias('c', 'config')
+    .options('b', {
+      alias: 'backup-dir'
+    })
+    .alias('h', 'help');
+var argv = arg.argv;
+
+logmagic.route('__root__', logmagic.DEBUG, 'graylog2-stderr');
+
+function main() {
+  var sync = require('../lib/cassandra-syncer').sync,
+      options = {},
+      config;
+
+  if (argv.help) {
+    arg.showHelp();
+    process.exit(0);
+  }
+
+  try {
+    config = fs.readFileSync(argv.c);
+    options.config = JSON.parse(config);
+  } catch(err) {
+    process.stdout.write('Invalid Config File: ' + err.message + '\n');
+    process.exit(1);
+  }
+
+  options.backupDirectory = argv.b;
+  options.re = argv.r;
+  options.source = argv.source;
+  options.target = argv.target;
+
+  sync(options, function(err) {
+    if (err) {
+      process.stderr.write(err);
+      if (err.stack) {
+        process.stderr.write(err.stack);
+      }
+      process.exit(1);
+    }
+    process.exit(0);
+  });
+}
+
+main();

@@ -1,77 +1,247 @@
 #!/usr/bin/env node
-/*
- *  Copyright 2011 Rackspace
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- */
 
-var sys = require('sys');
+var async = require('async');
+var cloudfiles = require('cloudfiles');
+var events = require('events');
 var fs = require('fs');
+var os = require('os');
+var path = require('path');
+var sprintf = require('sprintf').sprintf;
+var sys = require('sys');
 var logmagic = require('logmagic');
-var arg = require('optimist')
-    .usage('$0 --source=[source] --target=[destination] [--re=REGEX]')
-    .demand('target')
-    .alias('t', 'target')
-    .describe('target', 'cloudfiles://, directory://')
-    .demand('source')
-    .alias('s', 'source')
-    .options('r', {
-      alias: 'regex',
-      default: new RegExp('.*-Data.db')
-    })
-    .demand('config')
-    .alias('c', 'config')
-    .options('b', {
-      alias: 'backup-dir'
-    })
-    .alias('h', 'help');
-var argv = arg.argv;
+var log = require('logmagic').local('cassandra-syncer-new');
+var walk = require('walk');
+
+var Inotify = require('inotify').Inotify;
 
 logmagic.route('__root__', logmagic.DEBUG, 'graylog2-stderr');
 
-function main() {
-  var sync = require('../lib/cassandra-syncer').sync,
-      options = {},
-      config;
+var arg = require('optimist')
+    .usage('$0 ')
+    .demand('path')
+    .alias('p', 'path')
+    .demand('config')
+    .alias('c', 'config')
+    .alias('h', 'help');
+var argv = arg.argv;
 
-  if (argv.help) {
-    arg.showHelp();
-    process.exit(0);
+var getRandomInt = function(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+var randstr = function(len) {
+  var chars, r, x;
+
+  chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  r = [];
+
+  for (x = 0; x < len; x++) {
+    r.push(chars[getRandomInt(0, chars.length-1)]);
   }
 
+  return r.join('');
+};
+
+///// Uploader
+
+function Uploader(options) {
+  this._options = options || {};
+  if (!this._options.concurrency) {
+    this._options.concurrency = 2;
+  }
+  this._bucket = options.bucket || os.hostname();
+  this._queue = async.queue(this._performUpload.bind(this), this._options.concurrency);
+  this._client = cloudfiles.createClient(this._options);
+}
+
+Uploader.prototype.add = function(filename, writeManifest) {
+  var obj = {
+    filename: filename,
+    writeManifest: writeManifest
+  };
+  log.info(sprintf('Uploading %s', filename));
+  this._queue.push(obj, this._onDone(obj));
+}
+
+Uploader.prototype._onDone = function(obj) {
+  return function(err) {
+    if (err) {
+      log.error(sprintf('Error uploading %s.', obj.filename));
+      this.add(obj.filename, obj.writeManifest);
+    } else {
+      log.info(sprintf('Successfully uploaded %s.', obj.filename));
+    }
+  };
+};
+
+Uploader.prototype._writeManifest = function(filename, callback) {
+  var tmpfile = path.join(this._options.cache.cachePath, 'tmp' + randstr(8)),
+      self = this,
+      files,
+      walker = walk.walk(path.dirname(filename), {
+        followLinks: false,
+      });
+
+  walker.on('names', function(root, filesArray) {
+    files = filesArray.map(function(file) {
+      return path.join(root, file);
+    });
+  });
+
+  walker.on('end', function() {
+    if (!files) {
+      log.error('Could not get manifest files');
+      return;
+    }
+    fs.writeFileSync(tmpfile, JSON.stringify({ dirname: files }));
+    self._client.addFile(self._bucket, {'remote': filename + '.json', 'local': tmpfile}, function(err) {
+      fs.unlink(tmpfile);
+      callback(err);
+    });
+  });
+};
+
+Uploader.prototype._performUpload = function(obj, callback) {
+  var self = this;
+  this._client.setAuth(function(err) {
+    if (err) {
+      callback(err);
+      return;
+    }
+    self._client.addFile(self._bucket, {'remote': obj.filename, 'local': obj.filename}, function(err) {
+      if (err) {
+        callback(err);
+        return;
+      }
+      if (obj.writeManifest) {
+        self._writeManifest(obj.filename, callback);
+      } else {
+        callback();
+      }
+    });
+  });
+};
+
+Uploader.prototype.initialize= function(callback) {
+  this._client.createContainer(this._bucket, callback);
+};
+
+Uploader.prototype.isAFullBackupNeeded = function(callback) {
+  var self = this,
+      runFull = true;
+  this._client.setAuth(function(err) {
+    if (err) {
+      callback(err);
+      return;
+    }
+    self._client.getContainers(function(err, containers) {
+      if (err) {
+        callback(err);
+        return;
+      }
+
+      containers.forEach(function(container) {
+        if (container.name == self._bucket) {
+          runFull = false;
+        }
+      });
+
+      callback(err, runFull);
+    });
+  });
+};
+
+///// Watcher
+
+function Watcher(paths, options) {
+  this._paths = paths;
+  this._inotify = new Inotify();
+  this._uploader = new Uploader(options);
+}
+
+Watcher.prototype._onFile = function(p) {
+  var self = this;
+  return function(ev) {
+    var absolutePath = path.resolve(path.join(p, ev.name));
+    self._uploader.add(absolutePath, true);
+  };
+};
+
+Watcher.prototype.watch = function() {
+  var self = this;
+  this._paths.forEach(function(p) {
+    var resolvedPath = path.resolve(p);
+    log.info(sprintf('Adding watch %s', resolvedPath));
+    self._inotify.addWatch({
+      path: resolvedPath,
+      watch_for: Inotify.IN_MOVED_TO,
+      callback: self._onFile(resolvedPath)
+    });
+  });
+};
+
+Watcher.prototype.isTempFile = function(filename) {
+  return filename.indexOf('-tmp') !== -1;
+};
+
+Watcher.prototype.backup = function() {
+  var self = this;
+  function iter(paths, callback) {
+    var walker = walk.walk(paths, {
+      followLinks: false,
+    });
+
+    walker.on('file', function(root, fileStats, next) {
+      if (!self.isTempFile(fileStats.name)) {
+        self._uploader.add(path.resolve(path.join(root, fileStats.name)), false);
+      }
+      next();
+    });
+    walker.on('end', callback);
+  }
+  this._uploader.initialize(function() {
+    var q = async.queue(iter, 1);
+    q.push(self._paths);
+  });
+};
+
+Watcher.prototype.isAFullBackupNeeded = function(callback) {
+  this._uploader.isAFullBackupNeeded(callback);
+};
+
+function main() {
+  var config, opts = {};
+
   try {
-    config = fs.readFileSync(argv.c);
-    options.config = JSON.parse(config);
+    config = JSON.parse(fs.readFileSync(argv.config));
   } catch(err) {
-    process.stdout.write('Invalid Config File: ' + err.message + '\n');
+    log.error(sprintf('invalid config : %s', err.message));
     process.exit(1);
   }
 
-  options.backupDirectory = argv.b;
-  options.re = argv.r;
-  options.source = argv.source;
-  options.target = argv.target;
-
-  sync(options, function(err) {
+  opts.auth = {};
+  opts.auth.username = config.RACKSPACE_USERNAME;
+  opts.auth.apiKey = config.RACKSPACE_TOKEN;
+  if (config.USE_SERVICENET === true) {
+    opts.servicenet = true;
+  }
+  if (config.HOST) {
+    opts.auth.host = options.config.HOST;
+  }
+  if (config.CACHE_PATH) {
+    opts.cache = {};
+    opts.cache.cachePath = config.CACHE_PATH;
+  }
+  var watcher = new Watcher([].concat(argv.path), opts);
+  watcher.isAFullBackupNeeded(function(err, full) {
     if (err) {
-      process.stderr.write(err);
-      if (err.stack) {
-        process.stderr.write(err.stack);
-      }
-      process.exit(1);
+      log.error('Error', {err: err});
+      return;
     }
-    process.exit(0);
+    if (full) {
+      watcher.backup();
+    }
+    watcher.watch();
   });
 }
 
