@@ -69,10 +69,11 @@ Uploader.prototype._onDrain = function() {
 };
 
 Uploader.prototype._onDone = function(obj) {
+  var self = this;
   return function(err) {
     if (err) {
       log.error(sprintf('Error uploading %s.', obj.filename));
-      this.add(obj.filename, obj.writeManifest);
+      self.add(obj.filename, obj.writeManifest);
     } else {
       log.info(sprintf('Successfully uploaded %s.', obj.filename));
     }
