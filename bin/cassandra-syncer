@@ -51,6 +51,7 @@ function Uploader(options) {
   }
   this._bucket = options.bucket || os.hostname();
   this._queue = async.queue(this._performUpload.bind(this), this._options.concurrency);
+  this._queue.drain = this._onDrain.bind(this);
   this._client = cloudfiles.createClient(this._options);
 }
 
@@ -62,6 +63,10 @@ Uploader.prototype.add = function(filename, writeManifest) {
   log.info(sprintf('Uploading %s', filename));
   this._queue.push(obj, this._onDone(obj));
 }
+
+Uploader.prototype._onDrain = function() {
+  log.info('Queue is done');
+};
 
 Uploader.prototype._onDone = function(obj) {
   return function(err) {
