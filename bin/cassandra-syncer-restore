@@ -25,6 +25,8 @@ var arg = require('optimist')
     .alias('h', 'help');
 var argv = arg.argv;
 
+var RESTORE_MANIFEST_FILENAME = 'restoremanifest.json';
+
 function Restore(path, options) {
   this._options = options;
   if (!this._options.concurrency) {
@@ -60,7 +62,14 @@ Restore.prototype._performDownload = function(file, callback) {
 };
 
 Restore.prototype.restore = function() {
-  var self = this;
+  var self = this,
+      manifest,
+      manifestData;
+
+  function sortIter(a, b) {
+    return a.name > b.name;
+  }
+
   async.waterfall([
     function auth(callback) {
       self._client.setAuth(function() {
@@ -68,13 +77,33 @@ Restore.prototype.restore = function() {
       });
     },
     function getFiles(callback) {
-      self._client.getFiles(self._bucket, function(err, files) {
-        if (err) {
-          callback(err);
-          return;
-        }
-        self._queue.push(files);
-        callback();
+      self._client.getFiles(self._bucket, callback);
+    },
+    function findCurrentManifest(files, callback) {
+      files = files.filter(function(element) {
+        return element.name.search(/json/) !== -1;
+      });
+      files = files.sort(sortIter);
+      manifest = files[files.length - 1];
+      self._client.getFile(self._bucket, manifest.name, callback);
+    },
+    function saveManifest(file, callback) {
+      file.save({ local: RESTORE_MANIFEST_FILENAME }, callback)
+    },
+    function readManifest(callback) {
+      manifestData = fs.readFileSync(RESTORE_MANIFEST_FILENAME);
+      manifest = JSON.parse(manifestData);
+      manifest.dirname.forEach(function(file) {
+        var cachePath = path.dirname(path.join(self._cachePath, self._bucket, file));
+        mkdirp(cachePath, function(err) {
+          if (!err) {
+            self._client.getFile(self._bucket, file, function(err, file) {
+              if (!err) {
+                self._queue.push(file);
+              }
+            });
+          }
+        });
       });
     }
   ]);

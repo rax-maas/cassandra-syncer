@@ -83,6 +83,7 @@ Uploader.prototype._onDone = function(obj) {
 Uploader.prototype._writeManifest = function(filename, callback) {
   var tmpfile = path.join(this._options.cache.cachePath, 'tmp' + randstr(8)),
       self = this,
+      remoteFilename,
       files,
       walker = walk.walk(path.dirname(filename), {
         followLinks: false,
@@ -100,7 +101,8 @@ Uploader.prototype._writeManifest = function(filename, callback) {
       return;
     }
     fs.writeFileSync(tmpfile, JSON.stringify({ dirname: files }));
-    self._client.addFile(self._bucket, {'remote': filename + '.json', 'local': tmpfile}, function(err) {
+    remoteFilename = new String(Date.now()) + '.json';
+    self._client.addFile(self._bucket, {'remote': remoteFilename, 'local': tmpfile}, function(err) {
       fs.unlink(tmpfile);
       callback(err);
     });
@@ -120,7 +122,7 @@ Uploader.prototype._performUpload = function(obj, callback) {
         return;
       }
       if (obj.writeManifest) {
-        self._writeManifest(new String(Date.now()), callback);
+        self._writeManifest(obj.filename, callback);
       } else {
         callback();
       }
@@ -191,7 +193,8 @@ Watcher.prototype.isTempFile = function(filename) {
 };
 
 Watcher.prototype.backup = function() {
-  var self = this;
+  var self = this,
+      filename;
   function iter(paths, callback) {
     var walker = walk.walk(paths, {
       followLinks: false,
@@ -199,11 +202,16 @@ Watcher.prototype.backup = function() {
 
     walker.on('file', function(root, fileStats, next) {
       if (!self.isTempFile(fileStats.name)) {
-        self._uploader.add(path.resolve(path.join(root, fileStats.name)), false);
+        filename = path.resolve(path.join(root, fileStats.name))
+        self._uploader.add(filename, false);
       }
       next();
     });
-    walker.on('end', callback);
+    walker.on('end', function() {
+      if (filename) {
+        self._uploader._writeManifest(filename, callback);
+      }
+    });
   }
   this._uploader.initialize(function() {
     var q = async.queue(iter, 1);
