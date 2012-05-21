@@ -120,7 +120,7 @@ Uploader.prototype._performUpload = function(obj, callback) {
         return;
       }
       if (obj.writeManifest) {
-        self._writeManifest(obj.filename, callback);
+        self._writeManifest(new String(Date.now()), callback);
       } else {
         callback();
       }
