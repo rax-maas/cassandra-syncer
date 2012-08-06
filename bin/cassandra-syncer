@@ -119,10 +119,11 @@ Uploader.prototype._performUpload = function(obj, callback) {
     },
     function(callback) {
       fs.stat(obj.filename, function(err) {
-        if (err && err.code === 'ENOENT') {
-          skip = true;
-          callback();
-        } else if (err) {
+        if (err) {
+          if (err.code === 'ENOENT') {
+            skip = true;
+            err = undefined;
+          }
           callback(err);
         } else {
           callback();
