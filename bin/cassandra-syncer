@@ -113,7 +113,7 @@ Uploader.prototype._performUpload = function(obj, callback) {
   var self = this,
       skip = false;
 
-  async.waterfall([
+  async.series([
     function(callback) {
       self._client.setAuth(callback);
     },
@@ -138,7 +138,7 @@ Uploader.prototype._performUpload = function(obj, callback) {
       self._client.addFile(self._bucket, {'remote': obj.filename, 'local': obj.filename}, callback);
     },
     function(callback) {
-      if (obj.writeManifest) {
+      if (!skip && obj.writeManifest) {
         self._writeManifest(obj.filename, callback);
       } else {
         callback();
