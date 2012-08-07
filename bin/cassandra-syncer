@@ -110,24 +110,41 @@ Uploader.prototype._writeManifest = function(filename, callback) {
 };
 
 Uploader.prototype._performUpload = function(obj, callback) {
-  var self = this;
-  this._client.setAuth(function(err) {
-    if (err) {
-      callback(err);
-      return;
-    }
-    self._client.addFile(self._bucket, {'remote': obj.filename, 'local': obj.filename}, function(err) {
-      if (err) {
-        callback(err);
+  var self = this,
+      skip = false;
+
+  async.series([
+    function(callback) {
+      self._client.setAuth(callback);
+    },
+    function(callback) {
+      fs.stat(obj.filename, function(err) {
+        if (err) {
+          if (err.code === 'ENOENT') {
+            skip = true;
+            err = undefined;
+          }
+          callback(err);
+        } else {
+          callback();
+        }
+      });
+    },
+    function(callback) {
+      if (skip) {
+        callback();
         return;
       }
-      if (obj.writeManifest) {
+      self._client.addFile(self._bucket, {'remote': obj.filename, 'local': obj.filename}, callback);
+    },
+    function(callback) {
+      if (!skip && obj.writeManifest) {
         self._writeManifest(obj.filename, callback);
       } else {
         callback();
       }
-    });
-  });
+    }
+  ], callback);
 };
 
 Uploader.prototype.initialize= function(callback) {
